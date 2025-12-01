@@ -1,4 +1,3 @@
-import React from 'react';
 import { MovieCard } from './components/movie-card';
 
 function App() {
@@ -56,8 +55,6 @@ function App() {
 
   return (
     <div>
-      <h1>Usher MCP</h1>
-      <p>React app is running!</p>
       <MovieCard
         title={movie.title}
         posterUrl="https://image.tmdb.org/t/p/w1280/3Wg1LBCiTEXTxRrkNKOqJyyIFyF.jpg"

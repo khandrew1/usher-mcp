@@ -17,5 +17,17 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: 'usher.js',
+        chunkFileNames: 'usher.js',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+            return 'usher.css';
+          }
+          return assetInfo.name || 'asset';
+        },
+      },
+    },
   },
 });
