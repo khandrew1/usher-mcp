@@ -219,7 +219,7 @@ export function createMcpServer(
 ): McpServer {
   const server = new McpServer({
     name: "usher-mcp",
-    version: "0.0.2",
+    version: "0.1.0",
   });
 
   // Register movie-detail-widget

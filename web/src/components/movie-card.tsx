@@ -1,10 +1,4 @@
-import {
-  CalendarDays,
-  Clock,
-  Languages,
-  Sparkles,
-  Star,
-} from "lucide-react";
+import { CalendarDays, Clock, Languages, Sparkles, Star } from "lucide-react";
 import React from "react";
 
 import {
@@ -136,7 +130,7 @@ export function MovieCard({
               onClick={() => {
                 onOpenShowtimes();
               }}
-              className="text-primary inline-flex items-center gap-1 text-sm font-semibold hover:underline"
+              className="text-primary inline-flex items-center gap-1 text-sm font-semibold underline transition-colors hover:underline"
             >
               See showtimes
             </button>
