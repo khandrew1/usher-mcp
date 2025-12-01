@@ -1,4 +1,11 @@
-import { CalendarDays, Clock, ExternalLink, Languages, Sparkles, Star } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  ExternalLink,
+  Languages,
+  Sparkles,
+  Star,
+} from "lucide-react";
 import React from "react";
 
 import {

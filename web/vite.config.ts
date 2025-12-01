@@ -18,12 +18,15 @@ export default defineConfig({
     outDir: resolve(__dirname, "dist"),
     emptyOutDir: true,
     rollupOptions: {
+      input: {
+        widget: resolve(__dirname, "widget.html"),
+      },
       output: {
-        entryFileNames: "usher.js",
-        chunkFileNames: "usher.js",
+        entryFileNames: "movie-detail-widget.js",
+        chunkFileNames: "movie-detail-widget.js",
         assetFileNames: (assetInfo) => {
           if (assetInfo.name && assetInfo.name.endsWith(".css")) {
-            return "usher.css";
+            return "movie-detail-widget.css";
           }
           return assetInfo.name || "asset";
         },

@@ -8,6 +8,9 @@ type AssetsBinding = {
 };
 
 // Load assets using the ASSETS binding
+const WIDGET_CSS = "/movie-detail-widget.css";
+const WIDGET_JS = "/movie-detail-widget.js";
+
 async function loadAssets(
   assets?: AssetsBinding,
 ): Promise<{ css: string; html: string }> {
@@ -21,8 +24,8 @@ async function loadAssets(
       new Request(new URL(path, "https://assets.invalid").toString());
 
     // Fetch CSS and JS files from the ASSETS binding
-    const cssResponse = await assets.fetch(buildRequest("/usher.css"));
-    const htmlResponse = await assets.fetch(buildRequest("/usher.js"));
+    const cssResponse = await assets.fetch(buildRequest(WIDGET_CSS));
+    const htmlResponse = await assets.fetch(buildRequest(WIDGET_JS));
 
     if (!cssResponse.ok || !htmlResponse.ok) {
       throw new Error(
@@ -43,10 +46,13 @@ async function loadAssets(
   }
 }
 
-export function createMcpServer(assets?: AssetsBinding): McpServer {
+export function createMcpServer(
+  assets?: AssetsBinding,
+  tmdbToken?: string,
+): McpServer {
   const server = new McpServer({
     name: "usher-mcp",
-    version: "0.0.1",
+    version: "0.0.2",
   });
 
   server.registerResource(
@@ -115,7 +121,7 @@ export function createMcpServer(assets?: AssetsBinding): McpServer {
       },
     },
     async ({ query }) => {
-      const apiKey = process.env.TMDB_TOKEN;
+      const apiKey = tmdbToken ?? process.env.TMDB_TOKEN;
       if (!apiKey) {
         throw new Error(
           "TMDB_TOKEN is not set. Please add it to your environment.",
