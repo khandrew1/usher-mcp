@@ -8,6 +8,16 @@ function App() {
           MCP-compatible host to render the interactive widget. If you expected
           UI here, please point your MCP client at the `/mcp` endpoint instead.
         </p>
+        <p>
+          Check out the{" "}
+          <a
+            href="https://github.com/khandrew1/usher-mcp"
+            className="text-blue-500 hover:underline"
+          >
+            GitHub repository
+          </a>{" "}
+          for more information.
+        </p>
       </div>
     </div>
   );
