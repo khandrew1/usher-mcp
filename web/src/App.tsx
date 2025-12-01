@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { MovieCard, type MovieCardProps } from "./components/movie-card";
 
@@ -119,6 +119,7 @@ function App() {
     "idle",
   );
   const [error, setError] = useState<string | null>(null);
+  const sendRequestRef = useRef<((method: string, params?: unknown) => Promise<unknown>) | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -150,6 +151,7 @@ function App() {
         }, 15000);
       });
     };
+    sendRequestRef.current = sendRequest;
 
     const handleToolInput = (params?: ToolInputParams) => {
       const incomingQuery = params?.arguments?.query;
@@ -260,8 +262,31 @@ function App() {
       observer.disconnect();
       window.removeEventListener("message", handleMessage);
       pendingRequests.clear();
+      sendRequestRef.current = null;
     };
   }, []);
+
+  const handleShowtimesClick = (urlOverride?: string) => {
+    const activeTitle = movie?.title ?? query;
+    const url =
+      urlOverride ??
+      (activeTitle
+        ? `https://www.google.com/search?q=${encodeURIComponent(`${activeTitle} showtimes near me`)}`
+        : null);
+
+    if (!url) return;
+    const sendRequest = sendRequestRef.current;
+    if (!sendRequest) {
+      setStatus("error");
+      setError("Host did not expose ui/open-link capability.");
+      return;
+    }
+
+    sendRequest("ui/open-link", { url }).catch(() => {
+      setStatus("error");
+      setError("Host rejected ui/open-link request.");
+    });
+  };
 
   const statusText =
     status === "loading"
@@ -288,6 +313,7 @@ function App() {
         <MovieCard
           {...movie}
           query={query ?? movie.query}
+          onOpenShowtimes={handleShowtimesClick}
           className="shadow-md"
         />
       ) : (

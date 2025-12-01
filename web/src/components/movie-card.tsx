@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, Languages, Sparkles, Star } from "lucide-react";
+import { CalendarDays, Clock, ExternalLink, Languages, Sparkles, Star } from "lucide-react";
 import React from "react";
 
 import {
@@ -23,6 +23,7 @@ export type MovieCardProps = {
   studio?: string;
   query?: string;
   className?: string;
+  onOpenShowtimes?: (url: string) => void;
 };
 
 type MetaChipProps = {
@@ -72,6 +73,7 @@ export function MovieCard({
   studio,
   query,
   className,
+  onOpenShowtimes,
 }: MovieCardProps) {
   const formattedDate = formatDate(releaseDate);
   const formattedRuntime = formatRuntime(runtimeMinutes);
@@ -82,7 +84,13 @@ export function MovieCard({
 
   return (
     <Card className={cn("w-full h-screen bg-card/80", className)}>
-      <CardContent className="flex h-full items-stretch gap-4 p-5 sm:gap-6 sm:p-6">
+      <CardContent className="relative flex h-full items-stretch gap-4 p-5 sm:gap-6 sm:p-6">
+        {typeof rating === "number" && (
+          <div className="bg-amber-50 text-amber-900 absolute right-5 top-5 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold shadow-[0_0_0_1px_rgba(251,191,36,0.35)] sm:right-6 sm:top-6">
+            <Star className="size-4 fill-amber-400 text-amber-500" />
+            <span>{rating.toFixed(1)}</span>
+          </div>
+        )}
         <div className="relative aspect-[2/3] w-[140px] shrink-0 overflow-hidden rounded-lg border bg-gradient-to-br from-muted to-muted/50 shadow-inner sm:w-[180px]">
           {posterUrl ? (
             <img
@@ -114,13 +122,22 @@ export function MovieCard({
                 <CardDescription className="text-xs">{studio}</CardDescription>
               )}
             </div>
-            {typeof rating === "number" && (
-              <div className="bg-amber-50 text-amber-900 flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
-                <Star className="size-4 fill-amber-400 text-amber-500" />
-                <span>{rating.toFixed(1)}</span>
-              </div>
-            )}
           </div>
+
+          {title && onOpenShowtimes && (
+            <button
+              type="button"
+              onClick={() => {
+                const searchQuery = `${title} showtimes near me`;
+                const url = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+                onOpenShowtimes(url);
+              }}
+              className="text-primary inline-flex items-center gap-1 text-sm font-semibold hover:underline"
+            >
+              See showtimes
+              <ExternalLink className="size-3.5" aria-hidden />
+            </button>
+          )}
 
           <div className="flex flex-wrap items-center gap-2">
             {formattedDate && (
