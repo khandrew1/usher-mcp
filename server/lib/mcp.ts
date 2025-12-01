@@ -76,7 +76,7 @@ export function createMcpServer(assets?: AssetsBinding): McpServer {
                   <style>${css}</style>
                 </head>
                 <body>
-                  <div id="movie-detail-root"></div>
+                  <div id="root"></div>
                   <script type="module">${html}</script>
                 </body>
               </html>

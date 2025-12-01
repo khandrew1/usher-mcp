@@ -79,8 +79,8 @@ export function MovieCard({
       : null
 
   return (
-    <Card className={cn("max-w-2xl bg-card/80", className)}>
-      <CardContent className="flex items-stretch gap-4 p-5 sm:gap-6 sm:p-6">
+    <Card className={cn("w-full h-screen bg-card/80", className)}>
+      <CardContent className="flex h-full items-stretch gap-4 p-5 sm:gap-6 sm:p-6">
         <div className="relative aspect-[2/3] w-[140px] shrink-0 overflow-hidden rounded-lg border bg-gradient-to-br from-muted to-muted/50 shadow-inner sm:w-[180px]">
           {posterUrl ? (
             <img
