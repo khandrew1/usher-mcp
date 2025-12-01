@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
-import { MovieCard, type MovieCardProps } from "./components/movie-card"
+import { MovieCard, type MovieCardProps } from "./components/movie-card";
 
 type ToolInputParams = {
-  arguments?: Record<string, unknown>
-}
+  arguments?: Record<string, unknown>;
+};
 
 const SAMPLE_MOVIE: MovieCardProps = {
   title: "Zootopia 2",
@@ -20,65 +20,76 @@ const SAMPLE_MOVIE: MovieCardProps = {
   studio: "Walt Disney Animation Studios",
   query: "Zootopia 2",
   cast: ["Judy Hopps", "Nick Wilde"],
-}
+};
 
 function coerceNumber(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
-    const parsed = Number(value)
-    if (Number.isFinite(parsed)) return parsed
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
   }
-  return undefined
+  return undefined;
 }
 
 function parseMovieFromResult(result: unknown): MovieCardProps | null {
-  if (!result || typeof result !== "object") return null
-  const payload = (result as { structuredContent?: unknown; movie?: unknown }).structuredContent ?? result
-  const movie = (payload as { movie?: unknown }).movie ?? payload
+  if (!result || typeof result !== "object") return null;
+  const payload =
+    (result as { structuredContent?: unknown; movie?: unknown })
+      .structuredContent ?? result;
+  const movie = (payload as { movie?: unknown }).movie ?? payload;
 
-  if (!movie || typeof movie !== "object") return null
+  if (!movie || typeof movie !== "object") return null;
 
-  const movieObj = movie as Record<string, unknown>
+  const movieObj = movie as Record<string, unknown>;
   const posterUrl =
     typeof movieObj.posterUrl === "string"
       ? movieObj.posterUrl
       : typeof movieObj.poster_path === "string"
         ? `https://image.tmdb.org/t/p/w500${movieObj.poster_path}`
-        : undefined
+        : undefined;
 
   const genres = Array.isArray(movieObj.genres)
     ? (movieObj.genres
         .map((genre) => {
-          if (typeof genre === "string") return genre
+          if (typeof genre === "string") return genre;
           if (genre && typeof (genre as { name?: string }).name === "string") {
-            return (genre as { name: string }).name
+            return (genre as { name: string }).name;
           }
-          return null
+          return null;
         })
         .filter(Boolean) as string[])
-    : undefined
+    : undefined;
 
   const cast = Array.isArray(movieObj.cast)
     ? (movieObj.cast.filter((name) => typeof name === "string") as string[])
-    : undefined
+    : undefined;
 
-  const runtimeMinutes = coerceNumber(movieObj.runtimeMinutes ?? movieObj.runtime)
-  const rating = coerceNumber(movieObj.rating ?? movieObj.vote_average)
+  const runtimeMinutes = coerceNumber(
+    movieObj.runtimeMinutes ?? movieObj.runtime,
+  );
+  const rating = coerceNumber(movieObj.rating ?? movieObj.vote_average);
 
   const incomingQuery =
     typeof (payload as { query?: unknown }).query === "string"
       ? (payload as { query: string }).query
       : typeof movieObj.query === "string"
         ? (movieObj.query as string)
-        : undefined
+        : undefined;
 
   return {
     title:
       (typeof movieObj.title === "string" && movieObj.title) ||
-      (typeof movieObj.original_title === "string" ? (movieObj.original_title as string) : "Movie details"),
+      (typeof movieObj.original_title === "string"
+        ? (movieObj.original_title as string)
+        : "Movie details"),
     posterUrl,
-    releaseDate: (movieObj.releaseDate ?? movieObj.release_date) as string | undefined,
-    description: typeof movieObj.overview === "string" ? (movieObj.overview as string) : undefined,
+    releaseDate: (movieObj.releaseDate ?? movieObj.release_date) as
+      | string
+      | undefined,
+    description:
+      typeof movieObj.overview === "string"
+        ? (movieObj.overview as string)
+        : undefined,
     cast,
     runtimeMinutes,
     rating,
@@ -87,7 +98,10 @@ function parseMovieFromResult(result: unknown): MovieCardProps | null {
       (movieObj.language as string | undefined) ??
       (movieObj.original_language as string | undefined) ??
       undefined,
-    tagline: typeof movieObj.tagline === "string" ? (movieObj.tagline as string) : undefined,
+    tagline:
+      typeof movieObj.tagline === "string"
+        ? (movieObj.tagline as string)
+        : undefined,
     studio:
       (movieObj.studio as string | undefined) ??
       (Array.isArray(movieObj.production_companies) &&
@@ -95,122 +109,130 @@ function parseMovieFromResult(result: unknown): MovieCardProps | null {
         ? (movieObj.production_companies as Array<{ name?: string }>)[0]?.name
         : undefined),
     query: incomingQuery,
-  }
+  };
 }
 
 function App() {
-  const [movie, setMovie] = useState<MovieCardProps | null>(SAMPLE_MOVIE)
-  const [query, setQuery] = useState<string>(SAMPLE_MOVIE.title)
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle")
-  const [error, setError] = useState<string | null>(null)
+  const [movie, setMovie] = useState<MovieCardProps | null>(SAMPLE_MOVIE);
+  const [query, setQuery] = useState<string>(SAMPLE_MOVIE.title);
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    "idle",
+  );
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (typeof window === "undefined") return;
 
-    const target = window.parent ?? window
+    const target = window.parent ?? window;
     const pendingRequests = new Map<
       number,
       { resolve: (value: unknown) => void; reject: (error: unknown) => void }
-    >()
-    let requestId = 1
+    >();
+    let requestId = 1;
 
-    const post = (message: unknown) => target.postMessage(message, "*")
-    const sendNotification = (method: string, params?: unknown) => post({ jsonrpc: "2.0", method, params })
-    const sendResponse = (id: number, payload: { result?: unknown; error?: unknown }) =>
-      post({ jsonrpc: "2.0", id, ...payload })
+    const post = (message: unknown) => target.postMessage(message, "*");
+    const sendNotification = (method: string, params?: unknown) =>
+      post({ jsonrpc: "2.0", method, params });
+    const sendResponse = (
+      id: number,
+      payload: { result?: unknown; error?: unknown },
+    ) => post({ jsonrpc: "2.0", id, ...payload });
     const sendRequest = (method: string, params?: unknown) => {
-      const id = requestId++
-      post({ jsonrpc: "2.0", id, method, params })
+      const id = requestId++;
+      post({ jsonrpc: "2.0", id, method, params });
       return new Promise((resolve, reject) => {
-        pendingRequests.set(id, { resolve, reject })
+        pendingRequests.set(id, { resolve, reject });
         setTimeout(() => {
           if (pendingRequests.has(id)) {
-            pendingRequests.delete(id)
-            reject(new Error(`Request "${method}" timed out`))
+            pendingRequests.delete(id);
+            reject(new Error(`Request "${method}" timed out`));
           }
-        }, 15000)
-      })
-    }
+        }, 15000);
+      });
+    };
 
     const handleToolInput = (params?: ToolInputParams) => {
-      const incomingQuery = params?.arguments?.query
-      if (typeof incomingQuery === "string" && incomingQuery.trim().length > 0) {
-        setQuery(incomingQuery)
-        setStatus("loading")
-        setError(null)
+      const incomingQuery = params?.arguments?.query;
+      if (
+        typeof incomingQuery === "string" &&
+        incomingQuery.trim().length > 0
+      ) {
+        setQuery(incomingQuery);
+        setStatus("loading");
+        setError(null);
       }
-    }
+    };
 
     const handleToolResult = (params?: unknown) => {
-      const movieCard = parseMovieFromResult(params)
+      const movieCard = parseMovieFromResult(params);
       const incomingQuery =
         params &&
         typeof params === "object" &&
         "query" in params &&
         typeof (params as { query?: unknown }).query === "string"
           ? (params as { query: string }).query
-          : undefined
+          : undefined;
 
       if (incomingQuery) {
-        setQuery(incomingQuery)
+        setQuery(incomingQuery);
       } else if (movieCard?.query) {
-        setQuery(movieCard.query)
+        setQuery(movieCard.query);
       }
 
       if (movieCard) {
-        setMovie({ ...movieCard, query: incomingQuery ?? movieCard.query })
-        setStatus("ready")
-        setError(null)
+        setMovie({ ...movieCard, query: incomingQuery ?? movieCard.query });
+        setStatus("ready");
+        setError(null);
       } else {
-        setStatus("error")
-        setError("No movie details were returned.")
+        setStatus("error");
+        setError("No movie details were returned.");
       }
-    }
+    };
 
     const handleMessage = (event: MessageEvent) => {
-      const data = event.data
-      if (!data || data.jsonrpc !== "2.0") return
+      const data = event.data;
+      if (!data || data.jsonrpc !== "2.0") return;
 
       if (data.method) {
         switch (data.method) {
           case "ui/notifications/tool-input":
           case "ui/notifications/tool-input-partial":
-            handleToolInput(data.params as ToolInputParams)
-            return
+            handleToolInput(data.params as ToolInputParams);
+            return;
           case "ui/notifications/tool-result":
-            handleToolResult(data.params)
-            return
+            handleToolResult(data.params);
+            return;
           case "ui/tool-cancelled":
-            setStatus("error")
+            setStatus("error");
             setError(
               data.params && typeof data.params.reason === "string"
                 ? data.params.reason
-                : "Tool run was cancelled."
-            )
-            return
+                : "Tool run was cancelled.",
+            );
+            return;
           case "ui/resource-teardown":
             if (typeof data.id === "number") {
-              sendResponse(data.id, { result: {} })
+              sendResponse(data.id, { result: {} });
             }
-            return
+            return;
           default:
-            return
+            return;
         }
       }
 
       if (typeof data.id === "number" && pendingRequests.has(data.id)) {
-        const pending = pendingRequests.get(data.id)
-        pendingRequests.delete(data.id)
+        const pending = pendingRequests.get(data.id);
+        pendingRequests.delete(data.id);
 
         if (data.error) {
-          pending?.reject(data.error)
+          pending?.reject(data.error);
         } else {
-          pending?.resolve(data.result)
+          pending?.resolve(data.result);
         }
       }
-    }
+    };
 
-    window.addEventListener("message", handleMessage)
+    window.addEventListener("message", handleMessage);
 
     sendRequest("ui/initialize", {
       capabilities: {},
@@ -220,26 +242,26 @@ function App() {
       .then(() => sendNotification("ui/notifications/initialized", {}))
       .catch(() => {
         // Staying in preview mode when no host responds.
-      })
+      });
 
     const observer = new ResizeObserver((entries) => {
-      const entry = entries[0]
-      if (!entry) return
-      const { width, height } = entry.contentRect
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
       sendNotification("ui/notifications/size-change", {
         width: Math.round(width),
         height: Math.round(height),
-      })
-    })
+      });
+    });
 
-    observer.observe(document.body)
+    observer.observe(document.body);
 
     return () => {
-      observer.disconnect()
-      window.removeEventListener("message", handleMessage)
-      pendingRequests.clear()
-    }
-  }, [])
+      observer.disconnect();
+      window.removeEventListener("message", handleMessage);
+      pendingRequests.clear();
+    };
+  }, []);
 
   const statusText =
     status === "loading"
@@ -251,38 +273,30 @@ function App() {
           ? `Showing results for "${query}".`
           : "Showing movie details."
         : status === "error"
-          ? error ?? "Unable to load movie details."
-          : "Awaiting query from the MCP host. Showing preview data until results arrive."
+          ? (error ?? "Unable to load movie details.")
+          : "Awaiting query from the MCP host. Showing preview data until results arrive.";
 
   return (
     <div className="bg-background text-foreground min-h-screen">
-      <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
-        <header className="flex flex-col gap-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Movie detail widget
-          </p>
-          <div className="text-lg font-semibold leading-tight">
-            {query || movie?.title || "Movie search"}
-          </div>
-          <p className="text-sm text-muted-foreground">{statusText}</p>
-        </header>
+      {status === "error" && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error ?? "Something went wrong while loading this movie."}
+        </div>
+      )}
 
-        {status === "error" && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error ?? "Something went wrong while loading this movie."}
-          </div>
-        )}
-
-        {movie ? (
-          <MovieCard {...movie} query={query ?? movie.query} className="shadow-md" />
-        ) : (
-          <div className="rounded-lg border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">
-            Waiting for movie data from the host...
-          </div>
-        )}
-      </div>
+      {movie ? (
+        <MovieCard
+          {...movie}
+          query={query ?? movie.query}
+          className="shadow-md"
+        />
+      ) : (
+        <div className="rounded-lg border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">
+          Waiting for movie data from the host...
+        </div>
+      )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -1,34 +1,34 @@
-import { CalendarDays, Clock, Languages, Search, Sparkles, Star } from "lucide-react"
-import React from "react"
+import { CalendarDays, Clock, Languages, Sparkles, Star } from "lucide-react";
+import React from "react";
 
 import {
   Card,
   CardContent,
   CardDescription,
   CardTitle,
-} from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export type MovieCardProps = {
-  title: string
-  posterUrl?: string
-  releaseDate?: string | Date
-  description?: string
-  cast?: string[]
-  runtimeMinutes?: number
-  rating?: number
-  genres?: string[]
-  language?: string
-  tagline?: string
-  studio?: string
-  query?: string
-  className?: string
-}
+  title: string;
+  posterUrl?: string;
+  releaseDate?: string | Date;
+  description?: string;
+  cast?: string[];
+  runtimeMinutes?: number;
+  rating?: number;
+  genres?: string[];
+  language?: string;
+  tagline?: string;
+  studio?: string;
+  query?: string;
+  className?: string;
+};
 
 type MetaChipProps = {
-  icon: React.ReactNode
-  label: string
-}
+  icon: React.ReactNode;
+  label: string;
+};
 
 function MetaChip({ icon, label }: MetaChipProps) {
   return (
@@ -36,26 +36,26 @@ function MetaChip({ icon, label }: MetaChipProps) {
       {icon}
       <span className="truncate">{label}</span>
     </span>
-  )
+  );
 }
 
 function formatRuntime(runtimeMinutes?: number) {
-  if (!runtimeMinutes) return null
-  const hours = Math.floor(runtimeMinutes / 60)
-  const minutes = runtimeMinutes % 60
-  if (hours === 0) return `${minutes}m`
-  return `${hours}h ${minutes.toString().padStart(2, "0")}m`
+  if (!runtimeMinutes) return null;
+  const hours = Math.floor(runtimeMinutes / 60);
+  const minutes = runtimeMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  return `${hours}h ${minutes.toString().padStart(2, "0")}m`;
 }
 
 function formatDate(releaseDate?: string | Date) {
-  if (!releaseDate) return null
-  const date = new Date(releaseDate)
-  if (Number.isNaN(date.getTime())) return null
+  if (!releaseDate) return null;
+  const date = new Date(releaseDate);
+  if (Number.isNaN(date.getTime())) return null;
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
     year: "numeric",
-  }).format(date)
+  }).format(date);
 }
 
 export function MovieCard({
@@ -73,15 +73,15 @@ export function MovieCard({
   query,
   className,
 }: MovieCardProps) {
-  const formattedDate = formatDate(releaseDate)
-  const formattedRuntime = formatRuntime(runtimeMinutes)
+  const formattedDate = formatDate(releaseDate);
+  const formattedRuntime = formatRuntime(runtimeMinutes);
   const castLine =
     cast && cast.length > 0
       ? `${cast.slice(0, 4).join(", ")}${cast.length > 4 ? ` +${cast.length - 4} more` : ""}`
-      : null
+      : null;
 
   return (
-    <Card className={cn("w-full bg-card/80", className)}>
+    <Card className={cn("w-full h-screen bg-card/80", className)}>
       <CardContent className="flex h-full items-stretch gap-4 p-5 sm:gap-6 sm:p-6">
         <div className="relative aspect-[2/3] w-[140px] shrink-0 overflow-hidden rounded-lg border bg-gradient-to-br from-muted to-muted/50 shadow-inner sm:w-[180px]">
           {posterUrl ? (
@@ -111,9 +111,7 @@ export function MovieCard({
                 </p>
               )}
               {studio && (
-                <CardDescription className="text-xs">
-                  {studio}
-                </CardDescription>
+                <CardDescription className="text-xs">{studio}</CardDescription>
               )}
             </div>
             {typeof rating === "number" && (
@@ -153,12 +151,6 @@ export function MovieCard({
                 }
               />
             )}
-            {query && (
-              <MetaChip
-                icon={<Search className="size-3.5" aria-hidden />}
-                label={`Query: ${query}`}
-              />
-            )}
           </div>
 
           {description && (
@@ -175,5 +167,5 @@ export function MovieCard({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

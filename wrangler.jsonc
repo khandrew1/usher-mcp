@@ -3,12 +3,10 @@
   "name": "usher-mcp",
   "main": "server/index.ts",
   "compatibility_date": "2025-11-30",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./web/dist",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
   },
   // "vars": {
   //   "MY_VAR": "my-variable"
