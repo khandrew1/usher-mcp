@@ -252,25 +252,22 @@ export default function MovieDetailWidget() {
     };
   }, []);
 
-  const handleShowtimesClick = (urlOverride?: string) => {
+  const handleShowtimesClick = () => {
     const activeTitle = movie?.title ?? query;
-    const url =
-      urlOverride ??
-      (activeTitle
-        ? `https://www.google.com/search?q=${encodeURIComponent(`${activeTitle} showtimes near me`)}`
-        : null);
-
-    if (!url) return;
+    if (!activeTitle) return;
     const sendRequest = sendRequestRef.current;
     if (!sendRequest) {
       setStatus("error");
-      setError("Host did not expose ui/open-link capability.");
+      setError("Host did not expose ui/message capability.");
       return;
     }
 
-    sendRequest("ui/open-link", { url }).catch(() => {
+    sendRequest("ui/message", {
+      role: "user",
+      content: { type: "text", text: `Give me showtimes for ${activeTitle}` },
+    }).catch(() => {
       setStatus("error");
-      setError("Host rejected ui/open-link request.");
+      setError("Host rejected ui/message request.");
     });
   };
 

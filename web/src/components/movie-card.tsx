@@ -1,7 +1,6 @@
 import {
   CalendarDays,
   Clock,
-  ExternalLink,
   Languages,
   Sparkles,
   Star,
@@ -30,7 +29,7 @@ export type MovieCardProps = {
   studio?: string;
   query?: string;
   className?: string;
-  onOpenShowtimes?: (url: string) => void;
+  onOpenShowtimes?: () => void;
 };
 
 type MetaChipProps = {
@@ -135,14 +134,11 @@ export function MovieCard({
             <button
               type="button"
               onClick={() => {
-                const searchQuery = `${title} showtimes near me`;
-                const url = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
-                onOpenShowtimes(url);
+                onOpenShowtimes();
               }}
               className="text-primary inline-flex items-center gap-1 text-sm font-semibold hover:underline"
             >
               See showtimes
-              <ExternalLink className="size-3.5" aria-hidden />
             </button>
           )}
 
