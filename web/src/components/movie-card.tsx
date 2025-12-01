@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, Languages, Sparkles, Star } from "lucide-react"
+import { CalendarDays, Clock, Languages, Search, Sparkles, Star } from "lucide-react"
 import React from "react"
 
 import {
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
-type MovieCardProps = {
+export type MovieCardProps = {
   title: string
   posterUrl?: string
   releaseDate?: string | Date
@@ -21,6 +21,7 @@ type MovieCardProps = {
   language?: string
   tagline?: string
   studio?: string
+  query?: string
   className?: string
 }
 
@@ -69,6 +70,7 @@ export function MovieCard({
   language,
   tagline,
   studio,
+  query,
   className,
 }: MovieCardProps) {
   const formattedDate = formatDate(releaseDate)
@@ -79,7 +81,7 @@ export function MovieCard({
       : null
 
   return (
-    <Card className={cn("w-full h-screen bg-card/80", className)}>
+    <Card className={cn("w-full bg-card/80", className)}>
       <CardContent className="flex h-full items-stretch gap-4 p-5 sm:gap-6 sm:p-6">
         <div className="relative aspect-[2/3] w-[140px] shrink-0 overflow-hidden rounded-lg border bg-gradient-to-br from-muted to-muted/50 shadow-inner sm:w-[180px]">
           {posterUrl ? (
@@ -149,6 +151,12 @@ export function MovieCard({
                     ? `${genres.slice(0, 2).join(" • ")} +${genres.length - 2}`
                     : genres.join(" • ")
                 }
+              />
+            )}
+            {query && (
+              <MetaChip
+                icon={<Search className="size-3.5" aria-hidden />}
+                label={`Query: ${query}`}
               />
             )}
           </div>

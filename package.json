@@ -10,6 +10,7 @@
     "web:preview": "vite preview --config web/vite.config.ts"
   },
   "dependencies": {
+    "@blacktiger/tmdb": "^0.23.1",
     "@modelcontextprotocol/sdk": "^1.23.0",
     "@tailwindcss/vite": "^4.1.17",
     "agents": "^0.2.26",

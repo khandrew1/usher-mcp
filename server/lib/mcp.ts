@@ -1,3 +1,4 @@
+import TMDB from '@blacktiger/tmdb'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 
@@ -97,22 +98,87 @@ export function createMcpServer(assets?: AssetsBinding): McpServer {
   server.registerTool(
     "get-movie-detail",
     {
-      description: "Get detailed information about a movie",
+      description: "Search TMDB by title and return the best matching movie details",
       inputSchema: z.object({
-        movieId: z.string().optional().describe("The ID of the movie")
+        query: z
+          .string()
+          .min(1, "Please provide a movie title")
+          .describe("Movie title to search for")
       }),
       _meta: {
         "ui/resourceUri": "ui://widget/movie-detail-widget.html"
       }
     },
-    async () => {
+    async ({ query }) => {
+      const apiKey = process.env.TMDB_TOKEN
+      if (!apiKey) {
+        throw new Error("TMDB_TOKEN is not set. Please add it to your environment.")
+      }
+
+      const tmdb = new TMDB(apiKey, "en-US")
+      const searchResponse = await tmdb.search.movie(query, {
+        includeAdult: false,
+        page: 1,
+      })
+
+      const firstMatch = searchResponse.results?.[0]
+      if (!firstMatch) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `No results found for "${query}".`,
+            },
+          ],
+          structuredContent: {
+            query,
+            movie: null,
+          },
+        }
+      }
+
+      const [details, credits] = await Promise.all([
+        tmdb.movie.details(firstMatch.id),
+        tmdb.movie.credits(firstMatch.id).catch(() => undefined),
+      ])
+
+      const cast =
+        credits?.cast
+          ?.filter((member) => Boolean(member?.name))
+          .slice(0, 8)
+          .map((member) => member.name) ?? []
+
+      const moviePayload = {
+        id: details.id,
+        title: details.title ?? details.original_title,
+        releaseDate: details.release_date,
+        overview: details.overview,
+        runtimeMinutes: details.runtime,
+        rating: details.vote_average,
+        genres: details.genres?.map((genre) => genre.name).filter(Boolean) ?? [],
+        language: details.spoken_languages?.[0]?.english_name ?? details.original_language,
+        tagline: details.tagline,
+        studio: details.production_companies?.[0]?.name,
+        posterUrl: details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : undefined,
+        backdropUrl: details.backdrop_path
+          ? `https://image.tmdb.org/t/p/w1280${details.backdrop_path}`
+          : undefined,
+        homepage: details.homepage,
+        cast,
+        query,
+      }
+
       return {
         content: [
           {
             type: "text",
-            text: "Movie detail retrieved successfully"
-          }
-        ]
+            text: `Showing results for "${query}": ${moviePayload.title ?? "Unknown title"}.`,
+          },
+        ],
+        structuredContent: {
+          query,
+          movie: moviePayload,
+        },
       }
     }
   )
