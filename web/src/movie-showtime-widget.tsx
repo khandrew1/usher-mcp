@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
 import { Clock, MapPin, Navigation, Popcorn } from "lucide-react";
 
+import "./globals.css";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -469,3 +471,12 @@ export default function MovieShowtimeWidget() {
     </div>
   );
 }
+
+window.addEventListener("load", () => {
+  const root = document.getElementById("root");
+  if (!root) {
+    throw new Error("Root element not found");
+  }
+
+  createRoot(root).render(<MovieShowtimeWidget />);
+});

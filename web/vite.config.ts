@@ -1,43 +1,37 @@
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vite";
 import { resolve } from "path";
 import { fileURLToPath } from "url";
-import { defineConfig } from "vite";
+
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { viteSingleFile } from "vite-plugin-singlefile";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
-export default defineConfig(({ mode }) => {
-  const isShowtime = mode === "movie-showtime-widget";
-  const name = isShowtime ? "movie-showtime-widget" : "movie-detail-widget";
-  const htmlFile = isShowtime ? "movie-showtime-widget.html" : "widget.html";
+const INPUT = process.env.INPUT;
 
-  return {
-    root: __dirname,
-    plugins: [react(), tailwindcss()],
-    resolve: {
-      alias: {
-        "@": resolve(__dirname, "src"),
-      },
+if (!INPUT) {
+  throw new Error("INPUT environment variable is not set");
+}
+
+const isDevelopment = process.env.NODE_ENV === "development";
+
+export default defineConfig({
+  root: __dirname,
+  plugins: [react(), tailwindcss(), viteSingleFile()],
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "src"),
     },
-    build: {
-      outDir: resolve(__dirname, "dist"),
-      emptyOutDir: !isShowtime,
-      rollupOptions: {
-        input: {
-          [name]: resolve(__dirname, htmlFile),
-        },
-        output: {
-          entryFileNames: `${name}.js`,
-          chunkFileNames: `${name}.js`,
-          assetFileNames: (assetInfo) => {
-            if (assetInfo.name && assetInfo.name.endsWith(".css")) {
-              return `${name}.css`;
-            }
-            return assetInfo.name || "asset";
-          },
-          manualChunks: undefined,
-        },
-      },
+  },
+  build: {
+    sourcemap: isDevelopment ? "inline" : undefined,
+    cssMinify: !isDevelopment,
+    minify: !isDevelopment,
+    rollupOptions: {
+      input: resolve(__dirname, INPUT),
     },
-  };
+    outDir: `dist`,
+    emptyOutDir: false,
+  },
 });

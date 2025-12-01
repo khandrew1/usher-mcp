@@ -6,7 +6,7 @@
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "web:dev": "vite --config web/vite.config.ts",
-    "web:build": "vite build --config web/vite.config.ts --mode movie-detail-widget && vite build --config web/vite.config.ts --mode movie-showtime-widget",
+    "web:build": "INPUT=movie-detail-widget.html vite build --config web/vite.config.ts && INPUT=movie-showtime-widget.html vite build --config web/vite.config.ts",
     "web:preview": "vite preview --config web/vite.config.ts"
   },
   "dependencies": {
@@ -33,6 +33,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "vite": "^7.2.4",
+    "vite-plugin-singlefile": "^2.3.0",
     "wrangler": "^4.4.0"
   }
 }

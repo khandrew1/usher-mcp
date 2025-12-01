@@ -11,8 +11,7 @@ type AssetsBinding = {
 // Widget configuration type
 type WidgetConfig = {
   name: string;
-  cssPath: string;
-  jsPath: string;
+  htmlPath: string;
   resourceUri: string;
   description: string;
   cspDomains?: string[];
@@ -35,11 +34,10 @@ type SerpShowtimeResponse = {
   }>;
 };
 
-async function loadAssets(
+async function loadHtml(
   assets: AssetsBinding | undefined,
-  cssPath: string,
-  jsPath: string,
-): Promise<{ css: string; html: string }> {
+  htmlPath: string,
+): Promise<string> {
   try {
     if (!assets) {
       throw new Error("ASSETS binding not available");
@@ -49,26 +47,29 @@ async function loadAssets(
       // Assets fetcher expects an absolute URL, so use a placeholder origin.
       new Request(new URL(path, "https://assets.invalid").toString());
 
-    // Fetch CSS and JS files from the ASSETS binding
-    const cssResponse = await assets.fetch(buildRequest(cssPath));
-    const jsResponse = await assets.fetch(buildRequest(jsPath));
+    // Fetch HTML file from the ASSETS binding
+    const htmlResponse = await assets.fetch(buildRequest(htmlPath));
 
-    if (!cssResponse.ok || !jsResponse.ok) {
+    if (!htmlResponse.ok) {
       throw new Error(
-        `Failed to fetch assets: CSS ${cssResponse.status}, JS ${jsResponse.status}`,
+        `Failed to fetch HTML: ${htmlResponse.status}`,
       );
     }
 
-    const css = await cssResponse.text();
-    const html = await jsResponse.text();
-
-    return { css, html };
+    return await htmlResponse.text();
   } catch (error) {
-    console.error("Failed to load assets:", error);
-    return {
-      css: "/* Error loading CSS */",
-      html: "/* Error loading JS */",
-    };
+    console.error("Failed to load HTML:", error);
+    return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Error</title>
+  </head>
+  <body>
+    <div>Error loading widget HTML</div>
+  </body>
+</html>`;
   }
 }
 
@@ -92,32 +93,16 @@ function registerWidget(
       },
     },
     async () => {
-      // Load assets dynamically using ASSETS binding
-      const { css, html } = await loadAssets(
-        assets,
-        config.cssPath,
-        config.jsPath,
-      );
+      // Load HTML file dynamically using ASSETS binding
+      // The HTML file already contains all inlined CSS and JS from vite-plugin-singlefile
+      const html = await loadHtml(assets, config.htmlPath);
 
       return {
         contents: [
           {
             uri: config.resourceUri,
             mimeType: "text/html+mcp",
-            text: `
-              <!doctype html>
-              <html lang="en">
-                <head>
-                  <meta charset="utf-8" />
-                  <meta name="viewport" content="width=device-width, initial-scale=1" />
-                  <style>${css}</style>
-                </head>
-                <body>
-                  <div id="root"></div>
-                  <script type="module">${html}</script>
-                </body>
-              </html>
-            `.trim(),
+            text: html,
             _meta: {
               ui: {
                 csp: {
@@ -225,8 +210,7 @@ export function createMcpServer(
   // Register movie-detail-widget
   registerWidget(server, assets, {
     name: "movie-detail-widget",
-    cssPath: "/movie-detail-widget.css",
-    jsPath: "/movie-detail-widget.js",
+    htmlPath: "/movie-detail-widget.html",
     resourceUri: "ui://widget/movie-detail-widget.html",
     description: "Interactive movie detail widget UI",
     cspDomains: ["https://image.tmdb.org/"],
@@ -235,8 +219,7 @@ export function createMcpServer(
   // Register movie-showtime-widget
   registerWidget(server, assets, {
     name: "movie-showtime-widget",
-    cssPath: "/movie-showtime-widget.css",
-    jsPath: "/movie-showtime-widget.js",
+    htmlPath: "/movie-showtime-widget.html",
     resourceUri: "ui://widget/movie-showtime-widget.html",
     description: "Interactive movie showtime widget UI",
     cspDomains: ["https://image.tmdb.org/"],

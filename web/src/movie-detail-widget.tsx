@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
 
+import "./globals.css";
 import { MovieCard, type MovieCardProps } from "./components/movie-card";
 
 type ToolInputParams = {
@@ -307,3 +309,12 @@ export default function MovieDetailWidget() {
     </div>
   );
 }
+
+window.addEventListener("load", () => {
+  const root = document.getElementById("root");
+  if (!root) {
+    throw new Error("Root element not found");
+  }
+
+  createRoot(root).render(<MovieDetailWidget />);
+});
