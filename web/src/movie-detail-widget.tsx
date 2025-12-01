@@ -1,28 +1,10 @@
-import { useCallback, useState } from "react";
-import { z } from "zod";
-
-import {
-  McpUiResourceTeardownRequestSchema,
-  McpUiToolInputNotificationSchema,
-  McpUiToolInputPartialNotificationSchema,
-  McpUiToolResultNotificationSchema,
-  useApp,
-} from "@modelcontextprotocol/ext-apps/react";
+import { useEffect, useRef, useState } from "react";
 
 import { MovieCard, type MovieCardProps } from "./components/movie-card";
 
 type ToolInputParams = {
   arguments?: Record<string, unknown>;
 };
-
-const ToolCancelledNotificationSchema = z.object({
-  method: z.literal("ui/tool-cancelled"),
-  params: z
-    .object({
-      reason: z.string().optional(),
-    })
-    .optional(),
-});
 
 function coerceNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -121,98 +103,172 @@ export default function MovieDetailWidget() {
     "idle",
   );
   const [error, setError] = useState<string | null>(null);
+  const sendRequestRef = useRef<
+    ((method: string, params?: unknown) => Promise<unknown>) | null
+  >(null);
 
-  const handleToolInput = useCallback((params?: ToolInputParams) => {
-    const incomingQuery = params?.arguments?.query;
-    if (typeof incomingQuery === "string" && incomingQuery.trim().length > 0) {
-      setQuery(incomingQuery);
-      setStatus("loading");
-      setError(null);
-    }
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const target = window.parent ?? window;
+    const pendingRequests = new Map<
+      number,
+      { resolve: (value: unknown) => void; reject: (error: unknown) => void }
+    >();
+    let requestId = 1;
+
+    const post = (message: unknown) => target.postMessage(message, "*");
+    const sendNotification = (method: string, params?: unknown) =>
+      post({ jsonrpc: "2.0", method, params });
+    const sendResponse = (
+      id: number,
+      payload: { result?: unknown; error?: unknown },
+    ) => post({ jsonrpc: "2.0", id, ...payload });
+    const sendRequest = (method: string, params?: unknown) => {
+      const id = requestId++;
+      post({ jsonrpc: "2.0", id, method, params });
+      return new Promise((resolve, reject) => {
+        pendingRequests.set(id, { resolve, reject });
+        setTimeout(() => {
+          if (pendingRequests.has(id)) {
+            pendingRequests.delete(id);
+            reject(new Error(`Request "${method}" timed out`));
+          }
+        }, 15000);
+      });
+    };
+    sendRequestRef.current = sendRequest;
+
+    const handleToolInput = (params?: ToolInputParams) => {
+      const incomingQuery = params?.arguments?.query;
+      if (
+        typeof incomingQuery === "string" &&
+        incomingQuery.trim().length > 0
+      ) {
+        setQuery(incomingQuery);
+        setStatus("loading");
+        setError(null);
+      }
+    };
+
+    const handleToolResult = (params?: unknown) => {
+      const movieCard = parseMovieFromResult(params);
+      const incomingQuery =
+        params &&
+        typeof params === "object" &&
+        "query" in params &&
+        typeof (params as { query?: unknown }).query === "string"
+          ? (params as { query: string }).query
+          : undefined;
+
+      if (incomingQuery) {
+        setQuery(incomingQuery);
+      } else if (movieCard?.query) {
+        setQuery(movieCard.query);
+      }
+
+      if (movieCard) {
+        setMovie({ ...movieCard, query: incomingQuery ?? movieCard.query });
+        setStatus("ready");
+        setError(null);
+      } else {
+        setStatus("error");
+        setError("No movie details were returned.");
+      }
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.jsonrpc !== "2.0") return;
+
+      if (data.method) {
+        switch (data.method) {
+          case "ui/notifications/tool-input":
+          case "ui/notifications/tool-input-partial":
+            handleToolInput(data.params as ToolInputParams);
+            return;
+          case "ui/notifications/tool-result":
+            handleToolResult(data.params);
+            return;
+          case "ui/tool-cancelled":
+            setStatus("error");
+            setError(
+              data.params && typeof data.params.reason === "string"
+                ? data.params.reason
+                : "Tool run was cancelled.",
+            );
+            return;
+          case "ui/resource-teardown":
+            if (typeof data.id === "number") {
+              sendResponse(data.id, { result: {} });
+            }
+            return;
+          default:
+            return;
+        }
+      }
+
+      if (typeof data.id === "number" && pendingRequests.has(data.id)) {
+        const pending = pendingRequests.get(data.id);
+        pendingRequests.delete(data.id);
+
+        if (data.error) {
+          pending?.reject(data.error);
+        } else {
+          pending?.resolve(data.result);
+        }
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    sendRequest("ui/initialize", {
+      capabilities: {},
+      clientInfo: { name: "movie-detail-widget", version: "0.0.1" },
+      protocolVersion: "2025-06-18",
+    })
+      .then(() => sendNotification("ui/notifications/initialized", {}))
+      .catch(() => {
+        // Staying in preview mode when no host responds.
+      });
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      sendNotification("ui/notifications/size-change", {
+        width: Math.round(width),
+        height: Math.round(height),
+      });
+    });
+
+    observer.observe(document.body);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("message", handleMessage);
+      pendingRequests.clear();
+      sendRequestRef.current = null;
+    };
   }, []);
-
-  const handleToolResult = useCallback((params?: unknown) => {
-    const movieCard = parseMovieFromResult(params);
-    const incomingQuery =
-      params &&
-      typeof params === "object" &&
-      "query" in params &&
-      typeof (params as { query?: unknown }).query === "string"
-        ? (params as { query: string }).query
-        : undefined;
-
-    if (incomingQuery) {
-      setQuery(incomingQuery);
-    } else if (movieCard?.query) {
-      setQuery(movieCard.query);
-    }
-
-    if (movieCard) {
-      setMovie({ ...movieCard, query: incomingQuery ?? movieCard.query });
-      setStatus("ready");
-      setError(null);
-    } else {
-      setStatus("error");
-      setError("No movie details were returned.");
-    }
-  }, []);
-
-  const handleToolCancelled = useCallback((reason?: string | null) => {
-    setStatus("error");
-    setError(reason ?? "Tool run was cancelled.");
-  }, []);
-
-  const { app, isConnected } = useApp({
-    appInfo: { name: "movie-detail-widget", version: "0.1.0" },
-    capabilities: {},
-    onAppCreated: (appInstance) => {
-      appInstance.setNotificationHandler(
-        McpUiToolInputNotificationSchema as unknown as z.ZodObject<any>,
-        (notification) =>
-          handleToolInput(notification.params as ToolInputParams),
-      );
-      appInstance.setNotificationHandler(
-        McpUiToolInputPartialNotificationSchema as unknown as z.ZodObject<any>,
-        (notification) =>
-          handleToolInput(notification.params as ToolInputParams),
-      );
-      appInstance.setNotificationHandler(
-        McpUiToolResultNotificationSchema as unknown as z.ZodObject<any>,
-        (notification) => handleToolResult(notification.params),
-      );
-      appInstance.setNotificationHandler(
-        ToolCancelledNotificationSchema,
-        (notification) =>
-          handleToolCancelled(notification.params?.reason ?? null),
-      );
-      appInstance.setRequestHandler(
-        McpUiResourceTeardownRequestSchema as unknown as z.ZodObject<any>,
-        async () => ({}),
-      );
-    },
-  });
 
   const handleShowtimesClick = () => {
     const activeTitle = movie?.title ?? query;
     if (!activeTitle) return;
-
-    if (!app || !isConnected) {
+    const sendRequest = sendRequestRef.current;
+    if (!sendRequest) {
       setStatus("error");
       setError("Host did not expose ui/message capability.");
       return;
     }
 
-    app
-      .sendMessage({
-        role: "user",
-        content: [
-          { type: "text", text: `Give me showtimes for ${activeTitle}` },
-        ],
-      })
-      .catch(() => {
-        setStatus("error");
-        setError("Host rejected ui/message request.");
-      });
+    sendRequest("ui/message", {
+      role: "user",
+      content: { type: "text", text: `Give me showtimes for ${activeTitle}` },
+    }).catch(() => {
+      setStatus("error");
+      setError("Host rejected ui/message request.");
+    });
   };
 
   const statusText =
