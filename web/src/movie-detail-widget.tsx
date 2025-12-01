@@ -163,7 +163,7 @@ export default function MovieDetailWidget() {
   }, []);
 
   const { app, isConnected } = useApp({
-    appInfo: { name: "movie-detail-widget", version: "0.0.1" },
+    appInfo: { name: "movie-detail-widget", version: "0.1.0" },
     capabilities: {},
     onAppCreated: (appInstance) => {
       appInstance.setNotificationHandler(

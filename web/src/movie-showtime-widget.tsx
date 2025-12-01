@@ -73,7 +73,7 @@ function normalizeShowings(showing: unknown): Showing | null {
   const times = Array.isArray(timesSource)
     ? timesSource
         .map((t) => (typeof t === "string" ? t.trim() : null))
-        .filter(Boolean)
+        .filter((t): t is string => t !== null)
     : [];
   return {
     times,
@@ -215,7 +215,7 @@ export default function MovieShowtimeWidget() {
   }, []);
 
   const { app, isConnected } = useApp({
-    appInfo: { name: "movie-showtime-widget", version: "0.0.1" },
+    appInfo: { name: "movie-showtime-widget", version: "0.1.0" },
     capabilities: {},
     onAppCreated: (appInstance) => {
       appInstance.setNotificationHandler(
