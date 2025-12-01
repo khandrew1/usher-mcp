@@ -1,5 +1,6 @@
 import TMDB from "@blacktiger/tmdb";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { getJson } from "serpapi";
 import { z } from "zod";
 
 // Type for ASSETS binding (Fetcher from @cloudflare/workers-types)
@@ -7,12 +8,37 @@ type AssetsBinding = {
   fetch: (request: Request | string) => Promise<Response>;
 };
 
-// Load assets using the ASSETS binding
-const WIDGET_CSS = "/movie-detail-widget.css";
-const WIDGET_JS = "/movie-detail-widget.js";
+// Widget configuration type
+type WidgetConfig = {
+  name: string;
+  cssPath: string;
+  jsPath: string;
+  resourceUri: string;
+  description: string;
+  cspDomains?: string[];
+};
+
+type SerpShowtimeResponse = {
+  showtimes?: Array<{
+    day?: string;
+    date?: string;
+    theaters?: Array<{
+      name?: string;
+      link?: string;
+      distance?: string;
+      address?: string;
+      showing?: Array<{
+        time?: string[];
+        type?: string;
+      }>;
+    }>;
+  }>;
+};
 
 async function loadAssets(
-  assets?: AssetsBinding,
+  assets: AssetsBinding | undefined,
+  cssPath: string,
+  jsPath: string,
 ): Promise<{ css: string; html: string }> {
   try {
     if (!assets) {
@@ -24,17 +50,17 @@ async function loadAssets(
       new Request(new URL(path, "https://assets.invalid").toString());
 
     // Fetch CSS and JS files from the ASSETS binding
-    const cssResponse = await assets.fetch(buildRequest(WIDGET_CSS));
-    const htmlResponse = await assets.fetch(buildRequest(WIDGET_JS));
+    const cssResponse = await assets.fetch(buildRequest(cssPath));
+    const jsResponse = await assets.fetch(buildRequest(jsPath));
 
-    if (!cssResponse.ok || !htmlResponse.ok) {
+    if (!cssResponse.ok || !jsResponse.ok) {
       throw new Error(
-        `Failed to fetch assets: CSS ${cssResponse.status}, JS ${htmlResponse.status}`,
+        `Failed to fetch assets: CSS ${cssResponse.status}, JS ${jsResponse.status}`,
       );
     }
 
     const css = await cssResponse.text();
-    const html = await htmlResponse.text();
+    const html = await jsResponse.text();
 
     return { css, html };
   } catch (error) {
@@ -46,37 +72,37 @@ async function loadAssets(
   }
 }
 
-export function createMcpServer(
-  assets?: AssetsBinding,
-  tmdbToken?: string,
-): McpServer {
-  const server = new McpServer({
-    name: "usher-mcp",
-    version: "0.0.2",
-  });
-
+function registerWidget(
+  server: McpServer,
+  assets: AssetsBinding | undefined,
+  config: WidgetConfig,
+): void {
   server.registerResource(
-    "movie-detail-widget",
-    "ui://widget/movie-detail-widget.html",
+    config.name,
+    config.resourceUri,
     {
-      description: "Interactive movie detail widget UI",
+      description: config.description,
       mimeType: "text/html+mcp",
       _meta: {
         ui: {
           csp: {
-            resourceDomains: ["https://image.tmdb.org/"],
+            resourceDomains: config.cspDomains ?? ["https://image.tmdb.org/"],
           },
         },
       },
     },
     async () => {
       // Load assets dynamically using ASSETS binding
-      const { css, html } = await loadAssets(assets);
+      const { css, html } = await loadAssets(
+        assets,
+        config.cssPath,
+        config.jsPath,
+      );
 
       return {
         contents: [
           {
-            uri: "ui://widget/movie-detail-widget.html",
+            uri: config.resourceUri,
             mimeType: "text/html+mcp",
             text: `
               <!doctype html>
@@ -95,7 +121,9 @@ export function createMcpServer(
             _meta: {
               ui: {
                 csp: {
-                  resourceDomains: ["https://image.tmdb.org/"],
+                  resourceDomains: config.cspDomains ?? [
+                    "https://image.tmdb.org/",
+                  ],
                 },
               },
             },
@@ -104,6 +132,115 @@ export function createMcpServer(
       };
     },
   );
+}
+
+function normalizeShowtimes(response: SerpShowtimeResponse | undefined): Array<{
+  day?: string;
+  date?: string;
+  theaters: Array<{
+    name: string;
+    link?: string;
+    distance?: string;
+    address?: string;
+    showings: Array<{ type?: string; times: string[] }>;
+  }>;
+}> {
+  const showtimes = response?.showtimes;
+  if (!Array.isArray(showtimes)) return [];
+
+  return showtimes.slice(0, 4).map((entry) => {
+    const theatersRaw = Array.isArray(entry?.theaters)
+      ? (entry?.theaters ?? []).slice(0, 3)
+      : [];
+    const theaters = theatersRaw
+      .map((theater) => {
+        if (!theater) return null;
+        const distance =
+          typeof theater.distance === "number"
+            ? `${theater.distance}`
+            : (theater.distance ?? undefined);
+        const address =
+          typeof theater.address === "string" ? theater.address : undefined;
+        const showings = Array.isArray(theater.showing)
+          ? theater.showing
+              .map((showing) => {
+                if (!showing) return null;
+                const times = Array.isArray(showing.time)
+                  ? showing.time.filter(
+                      (time): time is string => typeof time === "string",
+                    )
+                  : [];
+                return { type: showing.type, times };
+              })
+              .filter(Boolean)
+          : [];
+
+        return {
+          name: theater.name ?? "Unknown theater",
+          link: theater.link ?? undefined,
+          distance,
+          address,
+          showings,
+        };
+      })
+      .filter(Boolean);
+
+    return {
+      day: entry?.day,
+      date: entry?.date,
+      theaters,
+    };
+  });
+}
+
+async function fetchPosterUrl(
+  title: string,
+  tmdbKey: string | undefined,
+): Promise<string | undefined> {
+  if (!tmdbKey) return undefined;
+  try {
+    const tmdb = new TMDB(tmdbKey, "en-US");
+    const searchResponse = await tmdb.search.movie(title, {
+      includeAdult: false,
+      page: 1,
+    });
+    const firstMatch = searchResponse.results?.[0];
+    if (!firstMatch?.poster_path) return undefined;
+    return `https://image.tmdb.org/t/p/w500${firstMatch.poster_path}`;
+  } catch (error) {
+    console.error("Failed to fetch poster from TMDB:", error);
+    return undefined;
+  }
+}
+
+export function createMcpServer(
+  assets?: AssetsBinding,
+  tmdbToken?: string,
+): McpServer {
+  const server = new McpServer({
+    name: "usher-mcp",
+    version: "0.0.2",
+  });
+
+  // Register movie-detail-widget
+  registerWidget(server, assets, {
+    name: "movie-detail-widget",
+    cssPath: "/movie-detail-widget.css",
+    jsPath: "/movie-detail-widget.js",
+    resourceUri: "ui://widget/movie-detail-widget.html",
+    description: "Interactive movie detail widget UI",
+    cspDomains: ["https://image.tmdb.org/"],
+  });
+
+  // Register movie-showtime-widget
+  registerWidget(server, assets, {
+    name: "movie-showtime-widget",
+    cssPath: "/movie-showtime-widget.css",
+    jsPath: "/movie-showtime-widget.js",
+    resourceUri: "ui://widget/movie-showtime-widget.html",
+    description: "Interactive movie showtime widget UI",
+    cspDomains: ["https://image.tmdb.org/"],
+  });
 
   server.registerTool(
     "get-movie-detail",
@@ -196,6 +333,93 @@ export function createMcpServer(
         structuredContent: {
           query,
           movie: moviePayload,
+        },
+      };
+    },
+  );
+
+  server.registerTool(
+    "get-movie-showtime",
+    {
+      description: "Search for movie showtimes by title and location",
+      inputSchema: z.object({
+        movieTitle: z
+          .string()
+          .min(1, "Please provide a movie title")
+          .describe("Movie title to search showtimes for"),
+        location: z
+          .string()
+          .min(1, "Please provide a location")
+          .describe("Location to search showtimes in"),
+      }),
+      _meta: {
+        "ui/resourceUri": "ui://widget/movie-showtime-widget.html",
+      },
+    },
+    async ({ movieTitle, location }) => {
+      const serpApiKey = process.env.SERP_TOKEN;
+
+      if (!serpApiKey) {
+        throw new Error(
+          "SERP_API_KEY is not set. Please add it to your environment.",
+        );
+      }
+
+      const query = `${movieTitle} ${location} theater`;
+      let serpResponse: SerpShowtimeResponse | undefined;
+
+      try {
+        serpResponse = (await getJson({
+          q: query,
+          location,
+          hl: "en",
+          gl: "us",
+          api_key: serpApiKey,
+        })) as SerpShowtimeResponse;
+      } catch (error) {
+        console.error("Failed to fetch showtimes from SerpAPI:", error);
+        throw new Error(
+          "Unable to fetch showtimes right now. Please try again.",
+        );
+      }
+
+      const showtimes = normalizeShowtimes(serpResponse);
+      const posterUrl = await fetchPosterUrl(
+        movieTitle,
+        tmdbToken ?? process.env.TMDB_TOKEN,
+      );
+
+      if (showtimes.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `No showtimes found for "${movieTitle}" in "${location}".`,
+            },
+          ],
+          structuredContent: {
+            movieTitle,
+            location,
+            query,
+            posterUrl,
+            showtimes,
+          },
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Showtimes for "${movieTitle}" in "${location}".`,
+          },
+        ],
+        structuredContent: {
+          movieTitle,
+          location,
+          query,
+          posterUrl,
+          showtimes,
         },
       };
     },
