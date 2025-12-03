@@ -338,7 +338,7 @@ export default function MovieShowtimeWidget() {
   const showtimeDays = payload.showtimes.slice(0, 4);
 
   return (
-    <div className="bg-background text-foreground min-h-screen">
+    <div className="bg-background text-foreground">
       {status === "error" && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error ?? "Something went wrong while loading showtimes."}

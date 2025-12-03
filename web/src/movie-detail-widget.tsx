@@ -287,7 +287,7 @@ export default function MovieDetailWidget() {
           : "Awaiting query from the MCP host. Showing preview data until results arrive.";
 
   return (
-    <div className="bg-background text-foreground min-h-screen">
+    <div className="bg-background text-foreground">
       {status === "error" && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error ?? "Something went wrong while loading this movie."}

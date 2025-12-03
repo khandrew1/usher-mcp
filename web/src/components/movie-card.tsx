@@ -83,7 +83,7 @@ export function MovieCard({
       : null;
 
   return (
-    <Card className={cn("w-full h-screen bg-card/80", className)}>
+    <Card className={cn("w-full bg-card/80", className)}>
       <CardContent className="relative flex h-full items-stretch gap-4 p-5 sm:gap-6 sm:p-6">
         {typeof rating === "number" && (
           <div className="bg-amber-50 text-amber-900 absolute right-5 top-5 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold shadow-[0_0_0_1px_rgba(251,191,36,0.35)] sm:right-6 sm:top-6">
